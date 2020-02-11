@@ -1,5 +1,5 @@
+import { AttributeType, Table } from '@aws-cdk/aws-dynamodb';
 import { IVpc } from '@aws-cdk/aws-ec2';
-import { Table, AttributeType } from '@aws-cdk/aws-dynamodb';
 import { Construct, RemovalPolicy } from '@aws-cdk/core';
 import { Config } from '../config';
 
@@ -13,12 +13,12 @@ export class DynamoResource {
   public readonly table: Table;
 
   constructor(args: DynamoParameters) {
-    this.table = new Table(args.scope, 'items', {
+    this.table = new Table(args.scope, `${args.config.prefix}-DynamoTable-${args.config.dynamoTableName}`, {
       partitionKey: {
-        name: 'itemId',
+        name: args.config.dynamoPartitionKey,
         type: AttributeType.STRING
       },
-      tableName: 'items',      
+      tableName: args.config.dynamoTableName,
       removalPolicy: RemovalPolicy.RETAIN,
     });
   }
