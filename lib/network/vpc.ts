@@ -1,6 +1,7 @@
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from '@aws-cdk/aws-ec2';
-import { Construct } from '@aws-cdk/core';
+import { CfnOutput, Construct } from '@aws-cdk/core';
 import { Config } from '../config';
+import { CustomCfnOutput } from '../custom';
 
 export interface VpcParameters {
   config: Config,
@@ -8,10 +9,12 @@ export interface VpcParameters {
 }
 
 export class VpcResource {
+  public readonly outputs: CfnOutput[];
   public readonly vpc: Vpc;
-  public readonly securityGroup: SecurityGroup;
+  public readonly vpcSecurityGroup: SecurityGroup;
 
   constructor(args: VpcParameters) {
+    this.outputs = new Array<CfnOutput>();
     this.vpc = new Vpc(args.scope, `${args.config.prefix}Vpc`, {
       cidr: '10.0.0.0/16',
       subnetConfiguration: [
@@ -30,7 +33,7 @@ export class VpcResource {
       natGateways: 0,
     });
 
-    this.securityGroup = new SecurityGroup(args.scope, `${args.config.prefix}SecurityGroup`, {
+    this.vpcSecurityGroup = new SecurityGroup(args.scope, `${args.config.prefix}SecurityGroup`, {
       vpc: this.vpc,
       allowAllOutbound: false,
       securityGroupName: `${args.config.prefix}SecurityGroup`,
@@ -38,15 +41,19 @@ export class VpcResource {
     });
 
     args.config.sgIngressWhitelist.forEach(ingress => {
-      this.securityGroup.addIngressRule(Peer.ipv4(ingress), Port.tcp(80));
-      this.securityGroup.addIngressRule(Peer.ipv4(ingress), Port.tcp(443));
-      this.securityGroup.addIngressRule(Peer.ipv4(ingress), Port.tcp(3306));
+      this.vpcSecurityGroup.addIngressRule(Peer.ipv4(ingress), Port.tcp(80));
+      this.vpcSecurityGroup.addIngressRule(Peer.ipv4(ingress), Port.tcp(443));
+      this.vpcSecurityGroup.addIngressRule(Peer.ipv4(ingress), Port.tcp(3306));
     });
 
     args.config.sgEgressWhitelist.forEach(egress => {
-      this.securityGroup.addEgressRule(Peer.ipv4(egress), Port.tcp(80));
-      this.securityGroup.addEgressRule(Peer.ipv4(egress), Port.tcp(443));
-      this.securityGroup.addEgressRule(Peer.ipv4(egress), Port.tcp(3306));
+      this.vpcSecurityGroup.addEgressRule(Peer.ipv4(egress), Port.tcp(80));
+      this.vpcSecurityGroup.addEgressRule(Peer.ipv4(egress), Port.tcp(443));
+      this.vpcSecurityGroup.addEgressRule(Peer.ipv4(egress), Port.tcp(3306));
     });
+
+    this.outputs.push(new CustomCfnOutput(args.scope, `${args.config.prefix}VpcSecurityGroupId`, {
+      value: this.vpcSecurityGroup.securityGroupId,
+    }))
   }
 }
